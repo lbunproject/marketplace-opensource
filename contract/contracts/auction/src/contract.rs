@@ -1,6 +1,6 @@
 use cosmwasm_std::{
-    Api, Binary, Env, Querier, StdError, Deps, DepsMut, MessageInfo,
-    StdResult, Storage, from_binary, to_binary, Uint128, entry_point,
+    Binary, Env,  StdError, Deps, DepsMut, MessageInfo,
+    StdResult,  from_binary, to_binary, Uint128, entry_point,
     Response
 };
 use marketplace::auction::{InstantiateMsg, ExecuteMsg, QueryMsg, Cw721HookMsg, MigrateMsg};
@@ -8,7 +8,7 @@ use cw721::Cw721ReceiveMsg;
 
 use crate::error::ContractError;
 use crate::state::{CONFIG, Config, STATE, State};
-use crate::auction::{create_auction, place_bid, settle_auction, set_royalty_fee, cancel_auction, admin_cancel_auction, admin_resume, 
+use crate::auction::{create_auction, place_bid, settle_auction, set_royalty_fee, cancel_auction, admin_cancel_auction, admin_resume,
     admin_pause, admin_change_config, set_royalty_admin, settle_hook};
 use crate::querier::{query_config, query_auction, query_state, query_royalty_fee, query_royalty_admin, query_auction_by_nft,
     query_all_royalty, query_calculate_price, query_nft_auction_map, query_bid_history_by_auction_id, query_auction_by_seller,
@@ -24,7 +24,7 @@ pub fn instantiate(
     msg: InstantiateMsg,
 ) -> Result<Response, ContractError> {
     let config = Config {
-        owner: info.sender.clone(),
+        owner: info.sender,
         protocol_fee: msg.protocol_fee,
         min_reserve_price: msg.min_reserve_price,
         max_royalty_fee: msg.max_royalty_fee,
@@ -74,9 +74,9 @@ pub fn receive_nft(
             // need to check that this contract is owner of nft to prevent malicious contract call this function directly
 
             let seller = deps.api.addr_validate(&cw721_msg.sender)?;
-            let nft_contract = info.sender.clone();
+            let nft_contract = info.sender;
             let token_id = cw721_msg.token_id.clone();
-            create_auction(deps, env, nft_contract, token_id.clone(), seller, denom, reserve_price, is_instant_sale)
+            create_auction(deps, env, nft_contract, token_id, seller, denom, reserve_price, is_instant_sale)
         }
         Err(err) => Err(ContractError::Std(StdError::generic_err(err.to_string())))
     }

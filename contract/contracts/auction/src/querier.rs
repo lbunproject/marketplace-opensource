@@ -6,12 +6,11 @@ use cw_utils::maybe_addr;
 use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use marketplace::auction::{ConfigResponse, StateResponse, AuctionResponse, CalculatePriceResponse, RoyaltyFeeResponse, RoyaltyResponse, RoyaltyAdminResponse, AllRoyaltyResponse, AllRoyaltyListResponse, Royalty, Bid, BidHistoryByAuctionIdResponse,  AuctionListResponse ,BidCountResponse };
 
-use crate::state::{ CONFIG, STATE, AUCTIONS, ROYALTIES, ROYALTY_ADMINS, 
+use crate::state::{ CONFIG, STATE, AUCTIONS, ROYALTIES, ROYALTY_ADMINS,
     NFT_AUCTION_MAPS, Auction, BID_HISTORY_BY_AUCTION_ID, AUCTION_ID_BY_SELLER,
     AUCTION_ID_BY_AMOUNT, AUCTION_ID_BY_ENDTIME, BID_COUNT_BY_AUCTION_ID,
     NOT_STARTED_AUCTION, AUCTION_ID_BY_BIDDER
  };
-use std::marker::PhantomData;
 
 const DEFAULT_LIMIT: u32 = 10;
 const MAX_LIMIT: u32 = 100;
@@ -56,7 +55,7 @@ pub fn query_nft_owner(
               include_expired: None
           })?,
       }))?;
-    Ok(deps.api.addr_validate(&owner_response.owner)?)
+    deps.api.addr_validate(&owner_response.owner)
 }
 
 pub fn query_auction(
@@ -70,14 +69,8 @@ pub fn query_auction(
 fn _query_auction(
     auction: Auction
 ) -> StdResult<AuctionResponse> {
-    let creator_address = match auction.creator_address {
-        Some(v) => Some(v.to_string()),
-        None => None
-    };
-    let bidder = match auction.bidder {
-        Some(v) => Some(v.to_string()),
-        None => None
-    };
+    let creator_address =  auction.creator_address.map(|v| v.to_string());
+    let bidder =  auction.bidder.map(|v| v.to_string());
     Ok(AuctionResponse {
         auction_id: auction.auction_id,
         auction_type: auction.auction_type,
@@ -89,10 +82,10 @@ fn _query_auction(
         denom: auction.denom,
         reserve_price: auction.reserve_price,
         end_time: auction.end_time,
-        bidder: bidder,
+        bidder,
         amount: auction.amount,
         is_settled: auction.is_settled,
-        creator_address: creator_address,
+        creator_address,
         royalty_fee: auction.royalty_fee
     })
 }
@@ -121,7 +114,7 @@ pub fn query_nft_auction_map(
     token_id: String
 ) -> StdResult<AuctionResponse> {
     let nft_contract_addr = deps.api.addr_validate(&nft_contract)?;
-    let auction_id = NFT_AUCTION_MAPS.load(deps.storage, (&nft_contract_addr, token_id.clone()))?;
+    let auction_id = NFT_AUCTION_MAPS.load(deps.storage, (&nft_contract_addr, token_id))?;
     let auction = AUCTIONS.load(deps.storage, auction_id)?;
     _query_auction(auction)
 }
@@ -142,7 +135,7 @@ pub fn query_auction_by_nft(
             auction_id
         })
         .collect::<Vec<u128>>();
-    return  Ok(auction_ids);
+    Ok(auction_ids)
 }
 
 pub fn query_auction_by_seller(
@@ -161,7 +154,7 @@ pub fn query_auction_by_seller(
             auction_id
         }).collect::<Vec<u128>>();
 
-    return  Ok(auction_ids);
+    Ok(auction_ids)
 }
 
 pub fn query_auction_by_end_time(
@@ -174,7 +167,7 @@ pub fn query_auction_by_end_time(
     let nft_addr = deps.api.addr_validate(&nft_contract)?;
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let mut order = Order::Ascending;
-    if (is_desc.unwrap_or(false)){
+    if is_desc.unwrap_or(false){
         order = Order::Descending;
     }
     let auction_ids = AUCTION_ID_BY_ENDTIME
@@ -186,7 +179,7 @@ pub fn query_auction_by_end_time(
             auction_id
         }).collect::<Vec<u128>>();
 
-    return  Ok(auction_ids);
+    Ok(auction_ids)
 }
 
 pub fn query_not_started_auctions(
@@ -199,19 +192,19 @@ pub fn query_not_started_auctions(
     let nft_addr = deps.api.addr_validate(&nft_contract)?;
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let mut order = Order::Ascending;
-    if (is_desc.unwrap_or(false)){
+    if is_desc.unwrap_or(false){
         order = Order::Descending;
     }
     let start_after =  start_after.unwrap_or(0u128);
     let auction_ids = NOT_STARTED_AUCTION
         .prefix(&nft_addr)
-        .range(deps.storage, Some(Bound::exclusive((start_after))), None, order)
+        .range(deps.storage, Some(Bound::exclusive(start_after)), None, order)
         .take(limit)
         .map(|x| {
             let (auction_id, _) = x.unwrap();
             auction_id
         }).collect::<Vec<u128>>();
-    return Ok(auction_ids);
+    Ok(auction_ids)
 }
 
 pub fn query_auction_by_bidder(
@@ -231,7 +224,7 @@ pub fn query_auction_by_bidder(
             let (auction_id, _) = x.unwrap();
             auction_id
         }).collect::<Vec<u128>>();
-    return Ok(auction_ids);
+    Ok(auction_ids)
 }
 
 pub fn query_auction_by_amount(
@@ -251,7 +244,7 @@ pub fn query_auction_by_amount(
             auction_id
         }).collect::<Vec<u128>>();
 
-    return  Ok(auction_ids);
+    Ok(auction_ids)
 }
 
 pub fn query_calculate_price(
@@ -291,7 +284,7 @@ pub fn query_bid_history_by_auction_id(
         .range(deps.storage, None, None, Order::Ascending)
         .take(limit)
         .map(|x| {
-            let (_, bid) = x.unwrap(); 
+            let (_, bid) = x.unwrap();
             bid
         })
         .collect::<Vec<Bid>>();
@@ -303,7 +296,7 @@ pub fn query_bid_number(
     auction_id: Uint128,
 ) -> StdResult<BidCountResponse> {
     let count = BID_COUNT_BY_AUCTION_ID.load(deps.storage, auction_id.u128())?;
-    Ok(BidCountResponse{ count: count })
+    Ok(BidCountResponse{count })
 }
 
 
@@ -331,14 +324,12 @@ pub fn query_royalty_admin(
     let address_raw = deps.api.addr_validate(&address)?;
     let admin = ROYALTY_ADMINS.may_load(deps.storage, &address_raw)?;
 
-    let enable = match admin {
-        Some(v) => v,
-        None => false
-    };
+    let enable = admin.unwrap_or(false);
+
 
     Ok(RoyaltyAdminResponse {
-        address: address,
-        enable: enable
+        address,
+        enable
     })
 }
 
@@ -351,13 +342,13 @@ pub fn construct_action_response(
         let res = auction_ids.get(i).unwrap();
         let auction_id = *res;
         let res = query_auction(deps, Uint128::from(auction_id));
-        match res {
-            Ok(a) => auctions.push(a),
-            Err(_) => ()
+        if let Ok(a) = res {
+            auctions.push(a)
         };
+
     }
     Ok(AuctionListResponse {
-        auctions: auctions
+        auctions
     })
 }
 

@@ -1,7 +1,7 @@
 [workspace]
 members = ["packages/*","contracts/*"]
 
-[profile.release.package.terraloot]
+[profile.release.package.marketplace]
 opt-level = 3
 debug = false
 debug-assertions = false

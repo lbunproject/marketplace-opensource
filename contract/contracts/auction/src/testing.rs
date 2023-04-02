@@ -90,7 +90,7 @@ fn create_buynow() {
     let mut deps = mock_dependencies(&[]);
     setup_contract(deps.as_mut(), vec!["uluna".to_string()]);
 
-    // receive nft 
+    // receive nft
     let env = mock_env();
     let info = mock_info("nft", &[]);
     let nft_receive_msg = Cw721ReceiveMsg {
@@ -198,7 +198,7 @@ fn create_auction() {
     let mut deps = mock_dependencies(&[]);
     setup_contract(deps.as_mut(), vec!["uluna".to_string()]);
 
-    // receive nft 
+    // receive nft
     let env = mock_env();
     let info = mock_info("nft", &[]);
     let nft_receive_msg = Cw721ReceiveMsg {
@@ -265,7 +265,7 @@ fn settle_buynow() {
     let mut deps = mock_dependencies(&[]);
     setup_contract(deps.as_mut(), vec!["uluna".to_string()]);
 
-    // receive nft 
+    // receive nft
     let env = mock_env();
     let info = mock_info("nft", &[]);
     let nft_receive_msg = Cw721ReceiveMsg {
@@ -368,7 +368,7 @@ fn settle_buynow() {
             to_address: "satoshi".into(),
             amount: vec![Coin::new(990000, "uluna")]
         }));
-    
+
     let send_nft_msg = res.messages.get(2).expect("no message");
     assert_eq!(
         &send_nft_msg.msg,
@@ -456,7 +456,7 @@ fn settle_buynow_with_royalty() {
     let env = mock_env();
     execute(deps.as_mut(), env, info, set_royalty_msg).unwrap();
 
-    // receive nft 
+    // receive nft
     let env = mock_env();
     let info = mock_info("nft", &[]);
     let nft_receive_msg = Cw721ReceiveMsg {
@@ -567,7 +567,7 @@ fn settle_buynow_with_royalty() {
             to_address: "satoshi".into(),
             amount: vec![Coin::new(940000, "uluna")]
         }));
-    
+
     let send_nft_msg = res.messages.get(3).expect("no message");
     assert_eq!(
         &send_nft_msg.msg,
@@ -637,7 +637,7 @@ fn settle_auction() {
     let mut deps = mock_dependencies(&[]);
     setup_contract(deps.as_mut(), vec!["uluna".to_string()]);
 
-    // receive nft 
+    // receive nft
     let env = mock_env();
     let info = mock_info("nft", &[]);
     let nft_receive_msg = Cw721ReceiveMsg {
@@ -823,7 +823,7 @@ fn settle_auction() {
             to_address: "satoshi".into(),
             amount: vec![Coin::new(1197900, "uluna")]
         }));
-    
+
     let send_nft_msg = res.messages.get(2).expect("no message");
     assert_eq!(
         &send_nft_msg.msg,
@@ -848,7 +848,7 @@ fn settle_auction() {
             }).unwrap(),
             funds: vec![]
         }));
-        
+
     let buynow = query_auction(deps.as_ref(), Uint128::zero()).unwrap();
     assert_eq!(
         buynow,
@@ -1004,7 +1004,7 @@ fn check_freeze_and_cancel_auction() {
             }).unwrap(),
             funds: vec![]
         }));
-    
+
     let settle_hook_msg = res.messages.get(1).expect("no message");
     assert_eq!(
         &settle_hook_msg.msg,
@@ -1017,7 +1017,7 @@ fn check_freeze_and_cancel_auction() {
             }).unwrap(),
             funds: vec![]
         }));
-    
+
     // unfreeze
     let env = mock_env();
     let info = mock_info("owner", &[]);
@@ -1046,7 +1046,7 @@ fn admin_cancel() {
     let mut deps = mock_dependencies(&[]);
     setup_contract(deps.as_mut(), vec!["uluna".to_string()]);
 
-    // receive nft 
+    // receive nft
     let env = mock_env();
     let info = mock_info("nft", &[]);
     let nft_receive_msg = Cw721ReceiveMsg {
@@ -1131,6 +1131,7 @@ fn admin_cancel() {
         auction_id: Uint128::from(1u128)
     };
     let res = execute(deps.as_mut(), env, info, admin_cancel_msg).unwrap();
+    eprintln!("Cancel messages {:?}",res.messages);
     assert_eq!(2, res.messages.len());
 
     let send_fund_bidder_msg = res.messages.get(0).expect("no message");
@@ -1297,7 +1298,7 @@ fn query_multiple_royalties() {
 
     let mut i:u64 = 1;
     while i <= 10 {
-        let mut contract_addr = "nft".to_owned(); 
+        let mut contract_addr = "nft".to_owned();
         contract_addr.push_str(&i.to_string());
         let set_royalty_msg = ExecuteMsg::SetRoyaltyFee {
             contract_addr,
