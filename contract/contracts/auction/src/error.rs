@@ -21,5 +21,5 @@ pub enum ContractError {
     #[error("invalid amount: {0}")]
     InvalidAmount(String),
     #[error("invalid asset: {0}")]
-    InvalidAsset(String)
+    InvalidAsset(String),
 }

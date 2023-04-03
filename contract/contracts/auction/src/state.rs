@@ -1,9 +1,9 @@
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-use cosmwasm_std::{ Uint128, Addr, Decimal };
-use cw_storage_plus::{ Item, Map };
-use marketplace::auction::{ Royalty, AuctionType, Bid };
+use cosmwasm_std::{Addr, Decimal, Uint128};
+use cw_storage_plus::{Item, Map};
+use marketplace::auction::{AuctionType, Bid, Royalty};
 
 pub const STATE_KEY: &[u8] = b"state";
 
@@ -22,9 +22,8 @@ pub struct Config {
     pub duration: u64,
     pub extension_duration: u64,
     pub accepted_denom: Vec<String>,
-    pub collector_address: Addr
+    pub collector_address: Addr,
 }
-
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct State {
@@ -49,10 +48,8 @@ pub struct Auction {
     pub creator_address: Option<Addr>,
     pub royalty_fee: Decimal,
     pub protocol_fee: Decimal,
-    pub is_settled: bool
+    pub is_settled: bool,
 }
-
-
 
 pub const CONFIG: Item<Config> = Item::new("config");
 pub const STATE: Item<State> = Item::new("state");

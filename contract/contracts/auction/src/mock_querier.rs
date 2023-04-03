@@ -1,31 +1,31 @@
 use cosmwasm_std::testing::{MockApi, MockQuerier, MockStorage, MOCK_CONTRACT_ADDR};
 use cosmwasm_std::{
-    from_slice, to_binary, Api, Coin, Decimal, Querier, OwnedDeps,
-    QuerierResult, QueryRequest, SystemError, Uint128, WasmQuery, from_binary,
-    SystemResult, ContractResult, Addr, Empty
+    from_binary, from_slice, to_binary, Addr, Api, Coin, ContractResult, Decimal, Empty, OwnedDeps,
+    Querier, QuerierResult, QueryRequest, SystemError, SystemResult, Uint128, WasmQuery,
 };
+use cw721::{Cw721QueryMsg, OwnerOfResponse};
 use std::collections::HashMap;
 use std::marker::PhantomData;
-use cw721::{Cw721QueryMsg, OwnerOfResponse};
 
 /// mock_dependencies is a drop-in replacement for cosmwasm_std::testing::mock_dependencies
 /// this uses our CustomQuerier.
 pub fn mock_dependencies(
     contract_balance: &[Coin],
 ) -> OwnedDeps<MockStorage, MockApi, WasmMockQuerier, Empty> {
-    let custom_querier: WasmMockQuerier = WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
+    let custom_querier: WasmMockQuerier =
+        WasmMockQuerier::new(MockQuerier::new(&[(MOCK_CONTRACT_ADDR, contract_balance)]));
 
     OwnedDeps {
         storage: MockStorage::default(),
         api: MockApi::default(),
         querier: custom_querier,
-        custom_query_type: PhantomData
+        custom_query_type: PhantomData,
     }
 }
 
 pub struct WasmMockQuerier {
     base: MockQuerier<Empty>,
-    nft_querier: NftQuerier
+    nft_querier: NftQuerier,
 }
 
 #[derive(Clone, Default)]
@@ -36,7 +36,7 @@ pub struct NftQuerier {
 impl NftQuerier {
     pub fn new() -> Self {
         NftQuerier {
-            owners: HashMap::new()
+            owners: HashMap::new(),
         }
     }
 }
@@ -65,13 +65,15 @@ impl WasmMockQuerier {
                     Cw721QueryMsg::OwnerOf { token_id, .. } => {
                         let nft_owners = self.nft_querier.owners.get(contract_addr).unwrap();
                         let owner = nft_owners.get(&token_id).unwrap();
-                        SystemResult::Ok(ContractResult::Ok(to_binary(&OwnerOfResponse {
-                            owner: owner.clone(),
-                            approvals: vec![]
-                        }).unwrap()))
-                    
-                    },
-                    _ => panic!("DO NOT ENTER HERE")
+                        SystemResult::Ok(ContractResult::Ok(
+                            to_binary(&OwnerOfResponse {
+                                owner: owner.clone(),
+                                approvals: vec![],
+                            })
+                            .unwrap(),
+                        ))
+                    }
+                    _ => panic!("DO NOT ENTER HERE"),
                 }
             }
             _ => self.base.handle_query(request),
@@ -80,12 +82,10 @@ impl WasmMockQuerier {
 }
 
 impl WasmMockQuerier {
-    pub fn new (
-        base: MockQuerier<Empty>
-    ) -> Self {
+    pub fn new(base: MockQuerier<Empty>) -> Self {
         WasmMockQuerier {
             base,
-            nft_querier: NftQuerier::default()
+            nft_querier: NftQuerier::default(),
         }
     }
 
@@ -100,7 +100,9 @@ impl WasmMockQuerier {
     pub fn with_nft_owner(&mut self, nft_address: String, token_id: String, owner: String) {
         let exist = self.nft_querier.owners.contains_key(&nft_address);
         if !exist {
-            self.nft_querier.owners.insert(nft_address.clone(), HashMap::new());
+            self.nft_querier
+                .owners
+                .insert(nft_address.clone(), HashMap::new());
         }
         let owner_map = self.nft_querier.owners.get_mut(&nft_address).unwrap();
         owner_map.insert(token_id.clone(), owner.clone());
