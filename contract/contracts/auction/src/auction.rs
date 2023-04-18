@@ -14,6 +14,7 @@ use crate::state::{
     NFT_AUCTION_MAPS, NOT_STARTED_AUCTION, ROYALTIES, ROYALTY_ADMINS, STATE,
 };
 
+// AUCTIONS_MAPPING MODIFICATION
 pub fn create_auction(
     deps: DepsMut,
     _env: Env,
@@ -119,6 +120,7 @@ pub fn create_auction(
         .add_attribute("reserve", reserve_price))
 }
 
+// JUST ROYALTY MODIFICATION
 pub fn set_royalty_fee(
     deps: DepsMut,
     env: Env,
@@ -128,12 +130,16 @@ pub fn set_royalty_fee(
     royalty_fee: Decimal,
 ) -> Result<Response, ContractError> {
     only_royalty_admin(deps.as_ref(), &env, info)?;
+    let config = CONFIG.load(deps.storage)?;
     let nft_contract_addr = deps.api.addr_validate(&contract_addr)?;
     let creator_addr = deps.api.addr_validate(&creator)?;
     let royalty = Royalty {
         royalty_fee,
         creator: creator_addr,
     };
+    if royalty_fee >= config.max_royalty_fee {
+        return Err(ContractError::InvalidRoyaltyFee {});
+    }
     ROYALTIES.save(deps.storage, &nft_contract_addr, &royalty)?;
     Ok(Response::new()
         .add_attribute("action", "set_royalty_fee")
@@ -142,6 +148,7 @@ pub fn set_royalty_fee(
         .add_attribute("royalty_fee", royalty_fee.to_string()))
 }
 
+// ROYALTY ADMIN MODIFICATION
 pub fn set_royalty_admin(
     deps: DepsMut,
     env: Env,
@@ -164,6 +171,7 @@ pub fn set_royalty_admin(
         .add_attribute("enable", enable.to_string()))
 }
 
+// ADAPTER TO CALL CANCEL AUCTION
 pub fn cancel_auction(
     deps: DepsMut,
     env: Env,
@@ -336,7 +344,7 @@ pub fn place_bid(
                         }
                     }
                     None => {
-                        return Err(ContractError::InvalidAuction("unknown bidder".to_string()))
+                        return Err(ContractError::InvalidAuction("unknown bidder".to_string()));
                     }
                 };
 
@@ -366,7 +374,7 @@ pub fn place_bid(
                 BID_COUNT_BY_AUCTION_ID.save(
                     deps.storage,
                     auction.auction_id.u128(),
-                    &Uint128::from(1u128),
+                    &Uint128::from(bid_count),
                 )?;
                 BID_HISTORY_BY_AUCTION_ID.save(
                     deps.storage,
@@ -669,6 +677,7 @@ pub fn admin_change_config(
     Ok(Response::new().add_attribute("action", "admin_change_config"))
 }
 
+
 fn _cancel_auction(
     deps: DepsMut,
     _env: Env,
@@ -681,7 +690,7 @@ fn _cancel_auction(
     if auction.is_settled {
         return Err(ContractError::InvalidAuction("already settled".to_string()));
     }
-
+    // implement fund return part
     // return nft back to seller
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: auction.nft_contract.to_string(),
@@ -707,6 +716,8 @@ fn _cancel_auction(
     Ok(messages)
 }
 
+
+// NO MODIFICATION ON AUCTION
 pub fn check_auction_owner(
     deps: Deps,
     _env: &Env,
@@ -728,6 +739,8 @@ pub fn check_auction_owner(
     Ok(true)
 }
 
+
+// MODIFIER ON SC OWNER
 pub fn only_owner(deps: Deps, _env: &Env, info: MessageInfo) -> Result<bool, ContractError> {
     let config = CONFIG.load(deps.storage)?;
     if info.sender != config.owner {
@@ -749,6 +762,7 @@ pub fn only_royalty_admin(
     }
 }
 
+//UTIL
 pub fn calculate_min_bid_amount(
     min_increment: Decimal,
     amount: Uint128,
@@ -758,6 +772,7 @@ pub fn calculate_min_bid_amount(
     Ok(min_bid_amount)
 }
 
+//UTIL
 pub fn calculate_fee(multiplier: Decimal, amount: Uint128) -> Result<Uint128, ContractError> {
     let fee = amount * multiplier;
     Ok(fee)

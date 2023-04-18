@@ -70,7 +70,7 @@ impl WasmMockQuerier {
                                 owner: owner.clone(),
                                 approvals: vec![],
                             })
-                            .unwrap(),
+                                .unwrap(),
                         ))
                     }
                     _ => panic!("DO NOT ENTER HERE"),

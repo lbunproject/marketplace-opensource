@@ -1,6 +1,7 @@
+use std::str::FromStr;
 use cosmwasm_std::{
     entry_point, from_binary, to_binary, Binary, Deps, DepsMut, Env, MessageInfo, Response,
-    StdError, StdResult, Uint128,
+    StdError, StdResult, Uint128, Decimal
 };
 use cw721::Cw721ReceiveMsg;
 use marketplace::auction::{Cw721HookMsg, ExecuteMsg, InstantiateMsg, MigrateMsg, QueryMsg};
@@ -37,11 +38,13 @@ pub fn instantiate(
         accepted_denom: msg.accepted_denom,
         collector_address: deps.api.addr_validate(&msg.collector_address)?,
     };
-
+    if msg.max_royalty_fee + msg.protocol_fee >= Decimal::from_str("1").unwrap() {
+        return Err(ContractError::InvalidRoyaltyFee{})
+    }
     CONFIG.save(deps.storage, &config)?;
 
     let state = State {
-        next_auction_id: Uint128::zero(),
+        next_auction_id: Uint128::from(1u128),
         is_freeze: false,
     };
 
@@ -112,10 +115,10 @@ pub fn receive_nft(
 ) -> Result<Response, ContractError> {
     match from_binary(&cw721_msg.msg) {
         Ok(Cw721HookMsg::CreateAuction {
-            denom,
-            reserve_price,
-            is_instant_sale,
-        }) => {
+               denom,
+               reserve_price,
+               is_instant_sale,
+           }) => {
             // need to check that this contract is owner of nft to prevent malicious contract call this function directly
 
             let seller = deps.api.addr_validate(&cw721_msg.sender)?;
