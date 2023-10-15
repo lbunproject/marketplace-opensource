@@ -114,7 +114,7 @@ pub fn query_auction_by_nft(
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let auction_ids = NFT_AUCTION_MAPS
         .prefix(&nft_contract_addr)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, Order::Descending)
         .take(limit)
         .map(|x| {
             let (_, auction_id) = x.unwrap();
@@ -133,7 +133,7 @@ pub fn query_auction_by_seller(
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let auction_ids = AUCTION_ID_BY_SELLER
         .prefix(&seller_addr)
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, Order::Descending)
         .take(limit)
         .map(|x| {
             let (auction_id, _) = x.unwrap();
@@ -221,7 +221,7 @@ pub fn query_auction_by_bidder(
             deps.storage,
             Some(Bound::exclusive(start_after)),
             None,
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .map(|x| {
@@ -246,7 +246,7 @@ pub fn query_auction_by_amount(
             deps.storage,
             Some(Bound::exclusive((amount.u128(), 0))),
             None,
-            Order::Ascending,
+            Order::Descending,
         )
         .take(limit)
         .map(|x| {
@@ -291,7 +291,7 @@ pub fn query_bid_history_by_auction_id(
     let limit = limit.unwrap_or(DEFAULT_LIMIT).min(MAX_LIMIT) as usize;
     let bid_history = BID_HISTORY_BY_AUCTION_ID
         .prefix(auction_id.u128())
-        .range(deps.storage, None, None, Order::Ascending)
+        .range(deps.storage, None, None, Order::Descending)
         .take(limit)
         .map(|x| {
             let (_, bid) = x.unwrap();
