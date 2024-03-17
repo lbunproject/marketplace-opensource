@@ -1,8 +1,9 @@
 use cosmwasm_std::{
-    to_binary, Addr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
+    to_json_binary, Addr, CosmosMsg, Decimal, Deps, DepsMut, Env, MessageInfo, Response, Uint128,
     WasmMsg,
 };
 use cw721::Cw721ExecuteMsg;
+use cw20::{ Balance, Cw20Coin, Cw20CoinVerified, Cw20ExecuteMsg, Cw20ReceiveMsg };
 use marketplace::auction::{AuctionType, Bid, ExecuteMsg, Royalty};
 use terraswap::asset::{Asset, AssetInfo};
 
@@ -188,7 +189,7 @@ pub fn cancel_auction(
             messages.extend(_cancel_auction(deps, env.clone(), auction_id)?);
             messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&ExecuteMsg::SettleHook {
+                msg: to_json_binary(&ExecuteMsg::SettleHook {
                     nft_contract: auction.nft_contract.to_string(),
                     token_id: auction.token_id.clone(),
                     owner: auction.seller.to_string(),
@@ -200,7 +201,7 @@ pub fn cancel_auction(
             messages.extend(_cancel_auction(deps, env.clone(), auction_id)?);
             messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
                 contract_addr: env.contract.address.to_string(),
-                msg: to_binary(&ExecuteMsg::SettleHook {
+                msg: to_json_binary(&ExecuteMsg::SettleHook {
                     nft_contract: auction.nft_contract.to_string(),
                     token_id: auction.token_id.clone(),
                     owner: auction.seller.to_string(),
@@ -220,6 +221,7 @@ pub fn place_bid(
     env: Env,
     info: MessageInfo,
     auction_id: Uint128,
+    cw_balance: Option<Balance>,
 ) -> Result<Response, ContractError> {
     // retrieve config
     let config = CONFIG.load(deps.storage)?;
@@ -521,7 +523,7 @@ pub fn settle_auction(
     };
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: auction.nft_contract.to_string(),
-        msg: to_binary(&Cw721ExecuteMsg::TransferNft {
+        msg: to_json_binary(&Cw721ExecuteMsg::TransferNft {
             token_id: auction.token_id.clone(),
             recipient: bidder.to_string(),
         })?,
@@ -530,7 +532,7 @@ pub fn settle_auction(
     // need additional message to check post condition (ex. bidder is now owner of nft) to prevent malicious nft contract
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: env.contract.address.to_string(),
-        msg: to_binary(&ExecuteMsg::SettleHook {
+        msg: to_json_binary(&ExecuteMsg::SettleHook {
             nft_contract: auction.nft_contract.to_string(),
             token_id: auction.token_id.clone(),
             owner: bidder.to_string(),
@@ -694,7 +696,7 @@ fn _cancel_auction(
     // return nft back to seller
     messages.push(CosmosMsg::Wasm(WasmMsg::Execute {
         contract_addr: auction.nft_contract.to_string(),
-        msg: to_binary(&Cw721ExecuteMsg::TransferNft {
+        msg: to_json_binary(&Cw721ExecuteMsg::TransferNft {
             token_id: auction.token_id.clone(),
             recipient: auction.seller.to_string(),
         })?,

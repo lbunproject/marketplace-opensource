@@ -1,5 +1,6 @@
 use cosmwasm_std::{Addr, Decimal, Uint128};
 use cw721::Cw721ReceiveMsg;
+use cw20::{ Cw20ReceiveMsg, Balance, Cw20Coin };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use std::fmt;
@@ -23,11 +24,13 @@ pub struct InstantiateMsg {
 #[serde(rename_all = "snake_case")]
 pub enum ExecuteMsg {
     ReceiveNft(Cw721ReceiveMsg),
+    Receive(Cw20ReceiveMsg),
     CancelAuction {
         auction_id: Uint128,
     },
     PlaceBid {
         auction_id: Uint128,
+        cw_balance: Option<Balance>,
     },
     Settle {
         auction_id: Uint128,
@@ -133,6 +136,25 @@ pub enum QueryMsg {
         limit: Option<u32>,
     },
 }
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub enum ReceiveMsg { 
+    PayFee(DenomMsg),
+    PlaceBidCw20(Cw20PlaceBidMsg),
+    //Cw20CancelAuction(),
+    //Cw20Settle(),
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct DenomMsg {
+    pub denom: String,              
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
+pub struct Cw20PlaceBidMsg {
+    pub auction_id: Uint128,              
+}
+
 
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, JsonSchema)]
 pub struct Royalty {
