@@ -240,7 +240,7 @@ pub struct AuctionResponse {
     pub bidder: Option<String>,
     pub amount: Uint128,
     pub creator_address: Option<String>,
-    pub royalty_fee: Decimal,
+    pub royalty_fee: Decimal, 
     pub is_settled: bool,
 }
 
