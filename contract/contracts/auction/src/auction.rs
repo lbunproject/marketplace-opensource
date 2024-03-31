@@ -266,7 +266,9 @@ pub fn place_bid(
     // Check if funds in is native or cw20
     if info.funds.len() > 1 {
         //only one native denom is allowed
-        return Err(ContractError::InvalidAmount("sent funds in multiple native denoms".to_string()));
+        return Err(
+            ContractError::InvalidAmount("sent funds in multiple native denoms".to_string())
+        );
     } else if info.funds.len() == 0 {
         //funds is cw20 token
         is_native = false;
@@ -286,9 +288,7 @@ pub fn place_bid(
             .iter()
             .find(|c| c.denom == auction.denom)
             .map(|c| c.amount)
-            .ok_or_else(||
-                ContractError::InvalidAsset("Native denom is incorrect".to_string())
-            )?;
+            .ok_or_else(|| ContractError::InvalidAsset("Native denom is incorrect".to_string()))?;
     }
 
     //check time
@@ -516,46 +516,114 @@ pub fn settle_auction(
     if env.block.time.seconds() < auction.end_time {
         return Err(ContractError::InvalidAuction("auction has not ended".to_string()));
     }
+
+    // Check if the denom represents a CW20 token or a native Terra token
+    let mut is_native = true;
+    if auction.denom.starts_with("terra") {
+        is_native = false;
+    }
+
     // distribute fund
     let mut messages: Vec<CosmosMsg> = vec![];
     let protocol_fee = calculate_fee(config.protocol_fee, auction.amount)?;
     let royalty_fee = calculate_fee(auction.royalty_fee, auction.amount)?;
     let seller_amount = auction.amount - (protocol_fee + royalty_fee);
-    // protocol fee
-    if protocol_fee > Uint128::zero() {
-        let protocol_asset = Asset {
-            info: AssetInfo::NativeToken {
+    
+    if is_native == true { // Construct messages for native tokens
+    
+        // protocol fee
+        if protocol_fee > Uint128::zero(){
+            let protocol_asset = Asset {
+                info: AssetInfo::NativeToken {
                 denom: auction.denom.clone(),
             },
-            amount: protocol_fee,
-        };
-        messages.push(protocol_asset.into_msg(config.collector_address)?);
-    }
-    // royalty
-    if royalty_fee > Uint128::zero() {
-        let royalty_asset = Asset {
-            info: AssetInfo::NativeToken {
+                amount: protocol_fee,
+            };
+            messages.push(protocol_asset.into_msg(config.collector_address)?);
+        }
+    
+        // royalty
+        if royalty_fee > Uint128::zero() {
+            let royalty_asset = Asset {
+                info: AssetInfo::NativeToken {
                 denom: auction.denom.clone(),
             },
-            amount: royalty_fee,
-        };
-        match auction.creator_address.clone() {
+                amount: royalty_fee,
+            };
+            match auction.creator_address.clone() {
             Some(v) => {
                 messages.push(royalty_asset.into_msg(v)?);
             }
             None => {
                 return Err(ContractError::InvalidAuction("creator address is not set".to_string()));
             }
-        };
-    }
-    // seller
-    let seller_asset = Asset {
-        info: AssetInfo::NativeToken {
+            };
+        }
+    
+        // seller
+        let seller_asset = Asset {
+            info: AssetInfo::NativeToken {
             denom: auction.denom.clone(),
         },
-        amount: seller_amount,
-    };
-    messages.push(seller_asset.into_msg(auction.seller.clone())?);
+            amount: seller_amount,
+        };
+        messages.push(seller_asset.into_msg(auction.seller.clone())?);
+    
+    } else { // Construct messages for CW20 tokens
+    
+        // protocol fee
+        if protocol_fee > Uint128::zero(){
+            let protocol_fee_msg = WasmMsg::Execute {
+                contract_addr: auction.denom.clone(),
+                msg: to_json_binary(
+                    &(Cw20ExecuteMsg::Transfer {
+                        recipient: config.collector_address.into(),
+                        amount: protocol_fee,
+                    })
+                )?,
+                funds: vec![],
+            };
+            messages.push(CosmosMsg::Wasm(protocol_fee_msg));
+        }
+
+        // royalty
+        if royalty_fee > Uint128::zero() {
+            let royalty_fee_msg = WasmMsg::Execute {
+                contract_addr: auction.denom.clone(),
+                msg: to_json_binary(
+                    &(Cw20ExecuteMsg::Transfer {
+                        recipient: auction.creator_address.clone().unwrap().into(),
+                        amount: royalty_fee,
+                    })
+                )?,
+                funds: vec![],
+            }; 
+            
+            match auction.creator_address.clone() {
+                Some(v) => {
+                    messages.push(CosmosMsg::Wasm(royalty_fee_msg));
+                }
+                None => {
+                    return Err(ContractError::InvalidAuction("creator address is not set".to_string()));
+                }
+            };
+        }
+       
+        // seller
+        let seller_asset_msg = WasmMsg::Execute {
+            contract_addr: auction.denom.clone(),
+            msg: to_json_binary(
+                &(Cw20ExecuteMsg::Transfer {
+                    recipient: auction.seller.clone().into(),
+                    amount: seller_amount,
+                })
+            )?,
+            funds: vec![],
+        };
+        messages.push(CosmosMsg::Wasm(seller_asset_msg));
+   
+     }
+
     // send nft to bidder
     let bidder = match &auction.bidder {
         Some(v) => v.clone(),

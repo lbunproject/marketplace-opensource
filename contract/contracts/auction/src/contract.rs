@@ -230,8 +230,6 @@ pub fn execute_receive(
     };
 
     match msg {
-        ReceiveMsg::PayFee(msg) =>
-            pay_fee(deps, env, info, msg, wrapper_sender.to_string(), cw_balance),
         ReceiveMsg::PlaceBidCw20(msg) => {
             let auction_id = msg.auction_id;
             let result = place_bid(deps, env, new_info, auction_id, Some(cw_balance))?;
@@ -245,134 +243,7 @@ pub fn execute_receive(
     }
 }
 
-pub fn pay_fee(
-    mut deps: DepsMut,
-    _env: Env,
-    info: MessageInfo,
-    msg: DenomMsg,
-    wrapper_sender: String, // Who actually sent the deposit
-    cw_balance: Balance
-) -> Result<Response, ContractError> {
-    //Balance can not be empty
-    if cw_balance.is_empty() {
-        return Err(ContractError::EmptyBalance {});
-    }
 
-    // Determine the denom of total_funds_in
-    let denom = if let Balance::Cw20(token) = &cw_balance {
-        token.address.to_string()
-    } else {
-        unreachable!(); // This branch should never be reached
-    };
-
-    let (token_used, wallet_paired);
-
-    // Check if denom matches any token
-    if let Some(pair) = FEE_TOKENS.iter().find(|pair| pair.token == denom) {
-        // Save the token address used
-        token_used = pair.token;
-        // You may also want to store the associated wallet address
-        wallet_paired = pair.wallet;
-    } else {
-        // Return an error if denom does not match any token
-        return Err(ContractError::InvalidToken {});
-    }
-
-    // Determine the total_funds_in amount
-    let amount = if let Balance::Cw20(token) = &cw_balance {
-        token.amount
-    } else {
-        unreachable!(); // This branch should never be reached
-    };
-
-    // Transfer the CW20 tokens to the owner
-    let fee_collector_addr = wallet_paired.to_string();
-    let cw20_token_addr = token_used.to_string();
-    let fee_amount = amount; // Amount to transfer
-
-    // Create a CW20 transfer message
-    let cw20_transfer_msg = WasmMsg::Execute {
-        contract_addr: cw20_token_addr.clone(),
-        msg: to_json_binary(
-            &(Cw20ExecuteMsg::Transfer {
-                recipient: fee_collector_addr.to_string(),
-                amount: fee_amount,
-            })
-        )?,
-        funds: vec![],
-    };
-
-    Ok(
-        Response::new()
-            .add_event(
-                Event::new("fee_paid")
-                    .add_attribute("denom", token_used.to_string())
-                    .add_attribute("amount", fee_amount.to_string())
-                    .add_attribute("fee_collector", fee_collector_addr.to_string())
-            )
-            .add_message(CosmosMsg::Wasm(cw20_transfer_msg))
-    )
-}
-
-#[cfg_attr(not(feature = "library"), entry_point)]
-pub fn query(deps: Deps, _env: Env, msg: QueryMsg) -> StdResult<Binary> {
-    match msg {
-        QueryMsg::Config {} => to_json_binary(&query_config(deps)?),
-        QueryMsg::State {} => to_json_binary(&query_state(deps)?),
-        QueryMsg::Auction { auction_id } => to_json_binary(&query_auction(deps, auction_id)?),
-        QueryMsg::RoyaltyFee { contract_addr } => {
-            to_json_binary(&query_royalty_fee(deps, contract_addr)?)
-        }
-        QueryMsg::RoyaltyAdmin { address } => to_json_binary(&query_royalty_admin(deps, address)?),
-        QueryMsg::AllRoyaltyFee { start_after, limit } => {
-            to_json_binary(&query_all_royalty(deps, start_after, limit)?)
-        }
-        QueryMsg::CalculatePrice { nft_contract, token_id, amount } =>
-            to_json_binary(&query_calculate_price(deps, nft_contract, token_id, amount)?),
-        QueryMsg::NftAuction { nft_contract, token_id } =>
-            to_json_binary(&query_nft_auction_map(deps, nft_contract, token_id)?),
-        QueryMsg::BidHistoryByAuctionId { auction_id, limit } => {
-            to_json_binary(&query_bid_history_by_auction_id(deps, auction_id, limit)?)
-        }
-        QueryMsg::BidsCount { auction_id } => to_json_binary(&query_bid_number(deps, auction_id)?),
-        QueryMsg::AuctionByContract { nft_contract, limit } => {
-            let auction_ids = query_auction_by_nft(deps, nft_contract, limit)?;
-            to_json_binary(&construct_action_response(deps, auction_ids)?)
-        }
-        QueryMsg::AuctionBySeller { seller, limit } => {
-            let auction_ids = query_auction_by_seller(deps, seller, limit)?;
-            to_json_binary(&construct_action_response(deps, auction_ids)?)
-        }
-        QueryMsg::AuctionByEndTime { nft_contract, end_time, limit, is_desc } => {
-            let auction_ids = query_auction_by_end_time(
-                deps,
-                nft_contract,
-                end_time,
-                limit,
-                is_desc
-            )?;
-            to_json_binary(&construct_action_response(deps, auction_ids)?)
-        }
-        QueryMsg::AuctionByAmount { nft_contract, amount, limit } => {
-            let auction_ids = query_auction_by_amount(deps, nft_contract, amount, limit)?;
-            to_json_binary(&construct_action_response(deps, auction_ids)?)
-        }
-        QueryMsg::NotStartedAuction { nft_contract, start_after, limit, is_desc } => {
-            let auction_ids = query_not_started_auctions(
-                deps,
-                nft_contract,
-                start_after,
-                limit,
-                is_desc
-            )?;
-            to_json_binary(&construct_action_response(deps, auction_ids)?)
-        }
-        QueryMsg::AuctionByBidder { bidder, start_after, limit } => {
-            let auction_ids = query_auction_by_bidder(deps, bidder, start_after, limit)?;
-            to_json_binary(&construct_action_response(deps, auction_ids)?)
-        }
-    }
-}
 
 #[cfg_attr(not(feature = "library"), entry_point)]
 pub fn migrate(_deps: DepsMut, _env: Env, _msg: MigrateMsg) -> Result<Response, ContractError> {
